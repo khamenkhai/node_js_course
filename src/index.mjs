@@ -51,15 +51,27 @@ app.get("/setCookie", (req, res) => {
     res.send("Hola Amigo!");
 });
 
-app.post("/api/auth", passport.authenticate('local'), (req, res) => {});
+app.post("/api/auth", passport.authenticate('local'), (req, res) => {
+    res.send("Hehe hello ", res, req);
+});
 
 app.get("/api/auth/status", (req, res) => {
-    req.sessionStore.get(req.sessionID, (err, session) => {
-        console.log("session!");
-        console.log(session);
-    })
-    return req.session.user ? res.status(200).send(req.session.user) : res.status(401).send({ message: "Not authenticated!!!" })
-})
+    console.log("inside auth status endpoint =>");
+    console.log(req.user);
+    console.log(req.session);
+
+    return req.user ? res.send(req.user) : res.sendStatus(401);
+});
+
+app.get("/api/auth/logout", (req, res) => {
+    if (!req.user) return res.sendStatus(401);
+    req.logout((err) => {
+        if (err) return res.sendStatus(400);
+        res.send(200);
+    });
+});
+
+
 
 app.post("/api/cart", (req, res) => {
 

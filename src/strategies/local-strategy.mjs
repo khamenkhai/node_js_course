@@ -1,24 +1,37 @@
 import passport from "passport";
-import { Strategy } from "passport-local";
 import { Strategy as LocalStrategy } from 'passport-local';
 import { mockUsers } from "../utils/constants.mjs";
 
 passport.serializeUser((user, done) => {
-    done(null, user);
-})
+    console.log(`\n=> Inside serialized user `, user);
+    done(null, user.id);
+});
 
-export default passport.use(
-    new LocalStrategy({ usernameField: "email" }, (username, password, done) => {
-        console.log(`username : ${username}`);
-        console.log(`password : ${password}`);
+passport.deserializeUser((id, done) => {
+    try {
+        console.log(`\n=> Inside deserialized user `, id);
+        const findUser = mockUsers.find(user => user.id === id);
+        if (!findUser) return done(new Error("User Not Found"), null);
+        return done(null, findUser);
+    } catch (e) {
+        return done(e, null);
+    }
+});
+
+passport.use(
+    new LocalStrategy((username, password, done) => {
+        console.log(`username: ${username}`);
+        console.log(`password: ${password}`);
         try {
             const findUser = mockUsers.find(user => user.username === username);
-            if (!findUser) throw new Error("user not found!");
+            if (!findUser) return done(null, false, { message: "User not found" });
             if (findUser.password !== password)
-                throw new Error("Invalid Credentials");
-            done(null, findUser)
+                return done(null, false, { message: "Invalid credentials" });
+            return done(null, findUser);
         } catch (e) {
-            done(e, null);
+            return done(e);
         }
     })
 );
+
+export default passport;
