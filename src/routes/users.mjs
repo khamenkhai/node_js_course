@@ -9,6 +9,9 @@ import {
 import { mockUsers } from "../utils/constants.mjs";
 import { createUserValidationSchema } from "../utils/validationSchemas.mjs";
 import { resolveIndexByUserId } from "../utils/middlewares.mjs";
+import { User } from "../mongoose/schemas/user.mjs";
+import { hashedPassword } from "../utils/helpers.mjs";
+
 
 const router = Router();
 
@@ -24,11 +27,7 @@ const handleValidationErrors = (req, res, next) => {
 // GET /api/users with filter validation
 router.get(
     "/api/users",
-    [
-        query("filter").isString().notEmpty().withMessage("Filter is required"),
-        query("value").optional().isString().notEmpty().withMessage("Value cannot be empty if provided"),
-        handleValidationErrors,
-    ],
+    query("filter").isString().notEmpty().withMessage("Must not empty").isLength({ min: 3, max: 10 }).withMessage("Must be at least 3-10 characters"),
     (req, res) => {
         const { filter, value } = req.query;
 
@@ -39,7 +38,6 @@ router.get(
                 )
             );
         }
-
         return res.json(mockUsers);
     }
 );
@@ -48,21 +46,28 @@ router.get(
 router.post(
     "/api/users",
     checkSchema(createUserValidationSchema),
-    handleValidationErrors,
-    (req, res) => {
-        const { username, displayName, password } = req.body;
+    async (req, res) => {
 
-        const newUser = {
-            id: mockUsers[mockUsers.length - 1]?.id + 1 || 1,
-            username,
-            displayName,
-            password
-        };
+        const result = validationResult(req);
+        if (!result.isEmpty()) return res.send(result.array());
 
-        mockUsers.push(newUser);
-        return res.status(201).json(mockUsers);
+        const data = matchedData(req);
+
+        data.password = await hashedPassword(data.password);
+
+        console.log(data);
+
+        const newUser = new User(data);
+        try {
+            const savedUser = await newUser.save();
+            res.status(201).json(savedUser);
+        } catch (e) {
+            console.error(e);
+            res.status(500).json({ error: "Failed to create user", details: e.message });
+        }
     }
 );
+
 
 // GET /api/users/:id
 router.get("/api/users/:id", resolveIndexByUserId, (req, res) => {

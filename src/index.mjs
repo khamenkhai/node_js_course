@@ -4,7 +4,9 @@ import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import { mockUsers } from './utils/constants.mjs';
 import passport from 'passport';
+import mongoose from 'mongoose';
 import initializePassport from './strategies/local-strategy.mjs';
+import MongoStore from 'connect-mongo';
 
 
 // Middleware for logging requests
@@ -14,6 +16,12 @@ const loggingMiddleware = (req, res, next) => {
 };
 
 const app = express();
+
+mongoose
+    .connect("mongodb://localhost/express_tutorial")
+    .then(() => console.log("Connected to database!"))
+    .catch((err) => console.log(`Error : ${err}`));
+
 const PORT = process.env.PORT || 3000;
 
 // 🔐 Provide secret key for signed cookies
@@ -24,7 +32,10 @@ app.use(session({
     resave: false,
     cookie: {
         maxAge: 60000 * 60
-    }
+    },
+     store : MongoStore.create({
+        client : mongoose.connection.getClient()
+    })
 }));
 
 app.use(passport.initialize());
@@ -57,7 +68,7 @@ app.post("/api/auth", passport.authenticate('local'), (req, res) => {
 
 app.get("/api/auth/status", (req, res) => {
     console.log("inside auth status endpoint =>");
-    console.log(req.user);
+    // console.log(req.user);
     console.log(req.session);
 
     return req.user ? res.send(req.user) : res.sendStatus(401);
